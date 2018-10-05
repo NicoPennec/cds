@@ -62,85 +62,80 @@ func (api *API) importPipelineHandler() service.Handler {
 		format := r.FormValue("format")
 		forceUpdate := FormBool(r, "forceUpdate")
 
-		// Load project
-		proj, errp := project.Load(api.mustDB(), api.Cache, key, getUser(ctx), project.LoadOptions.Default, project.LoadOptions.WithGroups)
-		if errp != nil {
-			return sdk.WrapError(errp, "importPipelineHandler> Unable to load project %s", key)
+		// load project for given key
+		proj, err := project.Load(api.mustDB(), api.Cache, key, getUser(ctx), project.LoadOptions.Default, project.LoadOptions.WithGroups)
+		if err != nil {
+			return sdk.WrapError(err, "importPipelineHandler> Unable to load project %s", key)
 		}
 
-		// Get body
+		// get request body
 		data, errRead := ioutil.ReadAll(r.Body)
 		if errRead != nil {
 			return sdk.WrapError(sdk.ErrWrongRequest, "importPipelineHandler> Unable to read body")
 		}
 
-		// Compute format
-		f, errF := exportentities.GetFormat(format)
-		if errF != nil {
-			return sdk.WrapError(sdk.ErrWrongRequest, "importPipelineHandler> Unable to get format : %s", errF)
+		// compute body format
+		f, err := exportentities.GetFormat(format)
+		if err != nil {
+			return sdk.WrapError(sdk.ErrWrongRequest, "importPipelineHandler> Unable to get format : %s", err)
 		}
 
 		rawPayload := map[string]interface{}{}
-		var errorParse error
 		switch f {
 		case exportentities.FormatJSON:
-			errorParse = json.Unmarshal(data, &rawPayload)
+			err = json.Unmarshal(data, &rawPayload)
 		case exportentities.FormatYAML:
-			errorParse = yaml.Unmarshal(data, &rawPayload)
+			err = yaml.Unmarshal(data, &rawPayload)
+		default:
+			err = sdk.WrapError(sdk.ErrWrongRequest, "importPipelineHandler> Given data format not supported")
+		}
+		if err != nil {
+			return sdk.NewError(sdk.ErrWrongRequest, err)
 		}
 
-		if errorParse != nil {
-			return sdk.NewError(sdk.ErrWrongRequest, errorParse)
-		}
-
-		//Parse the data once to retrieve the version
+		// parse the data once to retrieve the version
 		var pipelineV1Format bool
 		if v, ok := rawPayload["version"]; ok {
-			if v.(string) == exportentities.PipelineVersion1 {
-				pipelineV1Format = true
-			}
+			pipelineV1Format = v.(string) == exportentities.PipelineVersion1
 		}
 
-		//Depending on the version, we will use different struct
+		// depending on the version, we will use different struct
 		type pipeliner interface {
 			Pipeline() (*sdk.Pipeline, error)
 		}
 
 		var payload pipeliner
-		// Parse the pipeline
 		if pipelineV1Format {
 			payload = &exportentities.PipelineV1{}
 		} else {
 			payload = &exportentities.Pipeline{}
 		}
 
+		// parse the pipeline
 		switch f {
 		case exportentities.FormatJSON:
-			errorParse = json.Unmarshal(data, payload)
+			err = json.Unmarshal(data, payload)
 		case exportentities.FormatYAML:
-			errorParse = yaml.Unmarshal(data, payload)
+			err = yaml.Unmarshal(data, payload)
+		}
+		if err != nil {
+			return sdk.NewError(sdk.ErrWrongRequest, sdk.WrapError(err, "importPipelineHandler> Cannot parse pipeline"))
 		}
 
-		if errorParse != nil {
-			return sdk.WrapError(sdk.ErrWrongRequest, "importPipelineHandler> Cannot parsing: %s", errorParse)
+		tx, err := api.mustDB().Begin()
+		if err != nil {
+			return sdk.WrapError(err, "importPipelineHandler: Cannot start transaction")
 		}
-
-		tx, errBegin := api.mustDB().Begin()
-		if errBegin != nil {
-			return sdk.WrapError(errBegin, "importPipelineHandler: Cannot start transaction")
-		}
-
 		defer tx.Rollback()
 
-		_, allMsg, globalError := pipeline.ParseAndImport(tx, api.Cache, proj, payload, getUser(ctx), pipeline.ImportOptions{Force: forceUpdate})
+		_, allMsg, err := pipeline.ParseAndImport(tx, api.Cache, proj, payload, getUser(ctx),
+			pipeline.ImportOptions{Force: forceUpdate})
 		msgListString := translate(r, allMsg)
-
-		if globalError != nil {
-			myError, ok := globalError.(sdk.Error)
-			if ok {
-				return service.WriteJSON(w, msgListString, myError.Status)
+		if err != nil {
+			if e, ok := err.(sdk.Error); ok {
+				return service.WriteJSON(w, msgListString, e.Status)
 			}
-			return sdk.WrapError(globalError, "importPipelineHandler> Unable import pipeline")
+			return sdk.WrapError(err, "importPipelineHandler> Unable import pipeline")
 		}
 
 		if err := tx.Commit(); err != nil {
