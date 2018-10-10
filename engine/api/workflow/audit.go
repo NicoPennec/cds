@@ -59,24 +59,25 @@ type addWorkflowAudit struct{}
 func (a addWorkflowAudit) Compute(db gorp.SqlExecutor, e sdk.Event) error {
 	var wEvent sdk.EventWorkflowAdd
 	if err := mapstructure.Decode(e.Payload, &wEvent); err != nil {
-		return sdk.WrapError(err, "addWorkflowAudit.Compute> Unable to decode payload")
+		return sdk.WrapError(err, "Unable to decode payload")
 	}
 
 	buffer := bytes.NewBufferString("")
-	_, errE := exportWorkflow(wEvent.Workflow, exportentities.FormatYAML, buffer)
-	if errE != nil {
-		return sdk.WrapError(errE, "addWorkflowAudit.Compute> Unable to export workflow")
+	if _, err := exportWorkflow(wEvent.Workflow, exportentities.FormatYAML, buffer); err != nil {
+		return sdk.WrapError(err, "Unable to export workflow")
 	}
-	audit := sdk.AuditWorklflow{
-		EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
-		Created:     e.Timestamp,
-		TriggeredBy: e.Username,
-		DataAfter:   buffer.String(),
-		WorkflowID:  wEvent.Workflow.ID,
-		ProjectKey:  e.ProjectKey,
-		DataType:    "yaml",
-	}
-	return InsertAudit(db, audit)
+
+	return InsertAudit(db, sdk.AuditWorkflow{
+		AuditCommon: sdk.AuditCommon{
+			EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
+			Created:     e.Timestamp,
+			TriggeredBy: e.Username,
+			DataAfter:   buffer.String(),
+			DataType:    "yaml",
+		},
+		WorkflowID: wEvent.Workflow.ID,
+		ProjectKey: e.ProjectKey,
+	})
 }
 
 type updateWorkflowAudit struct{}
@@ -84,30 +85,31 @@ type updateWorkflowAudit struct{}
 func (u updateWorkflowAudit) Compute(db gorp.SqlExecutor, e sdk.Event) error {
 	var wEvent sdk.EventWorkflowUpdate
 	if err := mapstructure.Decode(e.Payload, &wEvent); err != nil {
-		return sdk.WrapError(err, "updateWorkflowAudit.Compute> Unable to decode payload")
+		return sdk.WrapError(err, "Unable to decode payload")
 	}
 
 	oldWorkflowBuffer := bytes.NewBufferString("")
-	_, errE := exportWorkflow(wEvent.OldWorkflow, exportentities.FormatYAML, oldWorkflowBuffer)
-	if errE != nil {
-		return sdk.WrapError(errE, "updateWorkflowAudit.Compute> Unable to export workflow")
+	if _, err := exportWorkflow(wEvent.OldWorkflow, exportentities.FormatYAML, oldWorkflowBuffer); err != nil {
+		return sdk.WrapError(err, "Unable to export workflow")
 	}
+
 	newWorkflowBuffer := bytes.NewBufferString("")
-	_, errN := exportWorkflow(wEvent.NewWorkflow, exportentities.FormatYAML, newWorkflowBuffer)
-	if errN != nil {
-		return sdk.WrapError(errN, "updateWorkflowAudit.Compute> Unable to export workflow")
+	if _, err := exportWorkflow(wEvent.NewWorkflow, exportentities.FormatYAML, newWorkflowBuffer); err != nil {
+		return sdk.WrapError(err, "Unable to export workflow")
 	}
-	a := sdk.AuditWorklflow{
-		EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
-		Created:     e.Timestamp,
-		TriggeredBy: e.Username,
-		DataAfter:   newWorkflowBuffer.String(),
-		DataBefore:  oldWorkflowBuffer.String(),
-		WorkflowID:  wEvent.NewWorkflow.ID,
-		ProjectKey:  e.ProjectKey,
-		DataType:    "yaml",
-	}
-	return InsertAudit(db, a)
+
+	return InsertAudit(db, sdk.AuditWorkflow{
+		AuditCommon: sdk.AuditCommon{
+			EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
+			Created:     e.Timestamp,
+			TriggeredBy: e.Username,
+			DataAfter:   newWorkflowBuffer.String(),
+			DataBefore:  oldWorkflowBuffer.String(),
+			DataType:    "yaml",
+		},
+		WorkflowID: wEvent.NewWorkflow.ID,
+		ProjectKey: e.ProjectKey,
+	})
 }
 
 type deleteWorkflowAudit struct{}
@@ -115,24 +117,25 @@ type deleteWorkflowAudit struct{}
 func (d deleteWorkflowAudit) Compute(db gorp.SqlExecutor, e sdk.Event) error {
 	var wEvent sdk.EventWorkflowDelete
 	if err := mapstructure.Decode(e.Payload, &wEvent); err != nil {
-		return sdk.WrapError(err, "deleteWorkflowAudit.Compute> Unable to decode payload")
+		return sdk.WrapError(err, "Unable to decode payload")
 	}
 
 	oldWorkflowBuffer := bytes.NewBufferString("")
-	_, errE := exportWorkflow(wEvent.Workflow, exportentities.FormatYAML, oldWorkflowBuffer)
-	if errE != nil {
-		return sdk.WrapError(errE, "deleteWorkflowAudit.Compute> Unable to export workflow")
+	if _, err := exportWorkflow(wEvent.Workflow, exportentities.FormatYAML, oldWorkflowBuffer); err != nil {
+		return sdk.WrapError(err, "Unable to export workflow")
 	}
-	a := sdk.AuditWorklflow{
-		EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
-		Created:     e.Timestamp,
-		TriggeredBy: e.Username,
-		DataBefore:  oldWorkflowBuffer.String(),
-		WorkflowID:  wEvent.Workflow.ID,
-		ProjectKey:  e.ProjectKey,
-		DataType:    "yaml",
-	}
-	return InsertAudit(db, a)
+
+	return InsertAudit(db, sdk.AuditWorkflow{
+		AuditCommon: sdk.AuditCommon{
+			EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
+			Created:     e.Timestamp,
+			TriggeredBy: e.Username,
+			DataBefore:  oldWorkflowBuffer.String(),
+			DataType:    "yaml",
+		},
+		WorkflowID: wEvent.Workflow.ID,
+		ProjectKey: e.ProjectKey,
+	})
 }
 
 type addWorkflowPermissionAudit struct{}
@@ -140,24 +143,25 @@ type addWorkflowPermissionAudit struct{}
 func (a addWorkflowPermissionAudit) Compute(db gorp.SqlExecutor, e sdk.Event) error {
 	var wEvent sdk.EventWorkflowPermissionAdd
 	if err := mapstructure.Decode(e.Payload, &wEvent); err != nil {
-		return sdk.WrapError(err, "addWorkflowPermissionAudit.Compute> Unable to decode payload")
+		return sdk.WrapError(err, "Unable to decode payload")
 	}
 
 	b, err := json.MarshalIndent(wEvent.Permission, "", "  ")
 	if err != nil {
-		return sdk.WrapError(err, "addWorkflowPermissionAudit.Compute> Unable to marshal permission")
+		return sdk.WrapError(err, "Unable to marshal permission")
 	}
 
-	audit := sdk.AuditWorklflow{
-		EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
-		Created:     e.Timestamp,
-		TriggeredBy: e.Username,
-		DataAfter:   string(b),
-		WorkflowID:  wEvent.WorkflowID,
-		ProjectKey:  e.ProjectKey,
-		DataType:    "json",
-	}
-	return InsertAudit(db, audit)
+	return InsertAudit(db, sdk.AuditWorkflow{
+		AuditCommon: sdk.AuditCommon{
+			EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
+			Created:     e.Timestamp,
+			TriggeredBy: e.Username,
+			DataAfter:   string(b),
+			DataType:    "json",
+		},
+		WorkflowID: wEvent.WorkflowID,
+		ProjectKey: e.ProjectKey,
+	})
 }
 
 type updateWorkflowPermissionAudit struct{}
@@ -165,30 +169,31 @@ type updateWorkflowPermissionAudit struct{}
 func (u updateWorkflowPermissionAudit) Compute(db gorp.SqlExecutor, e sdk.Event) error {
 	var wEvent sdk.EventWorkflowPermissionUpdate
 	if err := mapstructure.Decode(e.Payload, &wEvent); err != nil {
-		return sdk.WrapError(err, "updateWorkflowPermissionAudit.Compute> Unable to decode payload")
+		return sdk.WrapError(err, "Unable to decode payload")
 	}
 
 	oldPerm, err := json.MarshalIndent(wEvent.OldPermission, "", "  ")
 	if err != nil {
-		return sdk.WrapError(err, "updateWorkflowPermissionAudit.Compute> Unable to marshal old permission")
+		return sdk.WrapError(err, "Unable to marshal old permission")
 	}
 
 	newPerm, err := json.MarshalIndent(wEvent.NewPermission, "", "  ")
 	if err != nil {
-		return sdk.WrapError(err, "updateWorkflowPermissionAudit.Compute> Unable to marshal new permission")
+		return sdk.WrapError(err, "Unable to marshal new permission")
 	}
 
-	audit := sdk.AuditWorklflow{
-		EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
-		Created:     e.Timestamp,
-		TriggeredBy: e.Username,
-		DataBefore:  string(oldPerm),
-		DataAfter:   string(newPerm),
-		WorkflowID:  wEvent.WorkflowID,
-		ProjectKey:  e.ProjectKey,
-		DataType:    "json",
-	}
-	return InsertAudit(db, audit)
+	return InsertAudit(db, sdk.AuditWorkflow{
+		AuditCommon: sdk.AuditCommon{
+			EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
+			Created:     e.Timestamp,
+			TriggeredBy: e.Username,
+			DataBefore:  string(oldPerm),
+			DataAfter:   string(newPerm),
+			DataType:    "json",
+		},
+		WorkflowID: wEvent.WorkflowID,
+		ProjectKey: e.ProjectKey,
+	})
 }
 
 type deleteWorkflowPermissionAudit struct{}
@@ -196,22 +201,23 @@ type deleteWorkflowPermissionAudit struct{}
 func (a deleteWorkflowPermissionAudit) Compute(db gorp.SqlExecutor, e sdk.Event) error {
 	var wEvent sdk.EventWorkflowPermissionDelete
 	if err := mapstructure.Decode(e.Payload, &wEvent); err != nil {
-		return sdk.WrapError(err, "deleteWorkflowPermissionAudit.Compute> Unable to decode payload")
+		return sdk.WrapError(err, "Unable to decode payload")
 	}
 
 	b, err := json.MarshalIndent(wEvent.Permission, "", " ")
 	if err != nil {
-		return sdk.WrapError(err, "deleteWorkflowPermissionAudit.Compute> Unable to marshal permission")
+		return sdk.WrapError(err, "Unable to marshal permission")
 	}
 
-	audit := sdk.AuditWorklflow{
-		EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
-		Created:     e.Timestamp,
-		TriggeredBy: e.Username,
-		DataBefore:  string(b),
-		WorkflowID:  wEvent.WorkflowID,
-		ProjectKey:  e.ProjectKey,
-		DataType:    "json",
-	}
-	return InsertAudit(db, audit)
+	return InsertAudit(db, sdk.AuditWorkflow{
+		AuditCommon: sdk.AuditCommon{
+			EventType:   strings.Replace(e.EventType, "sdk.Event", "", -1),
+			Created:     e.Timestamp,
+			TriggeredBy: e.Username,
+			DataBefore:  string(b),
+			DataType:    "json",
+		},
+		ProjectKey: e.ProjectKey,
+		WorkflowID: wEvent.WorkflowID,
+	})
 }

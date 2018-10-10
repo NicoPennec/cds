@@ -43,7 +43,7 @@ type Workflow struct {
 	DerivedFromWorkflowID   int64                  `json:"derived_from_workflow_id,omitempty" db:"derived_from_workflow_id" cli:"-"`
 	DerivedFromWorkflowName string                 `json:"derived_from_workflow_name,omitempty" db:"derived_from_workflow_name" cli:"-"`
 	DerivationBranch        string                 `json:"derivation_branch,omitempty" db:"derivation_branch" cli:"-"`
-	Audits                  []AuditWorklflow       `json:"audits" db:"-"`
+	Audits                  []AuditWorkflow        `json:"audits" db:"-"`
 	Pipelines               map[int64]Pipeline     `json:"pipelines" db:"-" cli:"-"  mapstructure:"-"`
 	Labels                  []Label                `json:"labels" db:"-" cli:"labels"`
 	ToDelete                bool                   `json:"to_delete" db:"to_delete" cli:"-"`

@@ -202,7 +202,7 @@ type NodeHook sdk.WorkflowNodeHook
 // NodeHookModel is a gorp wrapper around sdk.WorkflowHookModel
 type NodeHookModel sdk.WorkflowHookModel
 
-type auditWorkflow sdk.AuditWorklflow
+type auditWorkflow sdk.AuditWorkflow
 
 func init() {
 	gorpmapping.Register(gorpmapping.New(Workflow{}, "workflow", true, "id"))

@@ -40,6 +40,7 @@ import (
 	"github.com/ovh/cds/engine/api/warning"
 	"github.com/ovh/cds/engine/api/worker"
 	"github.com/ovh/cds/engine/api/workflow"
+	"github.com/ovh/cds/engine/api/workflowtemplate"
 	"github.com/ovh/cds/engine/service"
 	"github.com/ovh/cds/sdk"
 	"github.com/ovh/cds/sdk/log"
@@ -636,6 +637,7 @@ func (a *API) Serve(ctx context.Context) error {
 
 	log.Info("Initializing internal routines...")
 	sdk.GoRoutine("workflow.ComputeAudit", func() { workflow.ComputeAudit(ctx, a.DBConnectionFactory.GetDBMap) })
+	sdk.GoRoutine("workflowtemplate.ComputeAudit", func() { workflowtemplate.ComputeAudit(ctx, a.DBConnectionFactory.GetDBMap) })
 	sdk.GoRoutine("warning.Start", func() { warning.Start(ctx, a.DBConnectionFactory.GetDBMap, a.warnChan) })
 	sdk.GoRoutine("queue.Pipelines", func() { queue.Pipelines(ctx, a.Cache, a.DBConnectionFactory.GetDBMap) })
 	sdk.GoRoutine("pipeline.AWOLPipelineKiller", func() { pipeline.AWOLPipelineKiller(ctx, a.DBConnectionFactory.GetDBMap, a.Cache) })
